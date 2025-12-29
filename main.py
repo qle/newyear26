@@ -146,7 +146,7 @@ class Firework(Particle):
                     vy = random.uniform(-1, 1) * speed
                 vx *= 2.0 # Aspect ratio correction
 
-            lifespan = random.randint(30, 60)
+            lifespan = random.randint(60, 120) # Longer lifespan for visible shapes
             char = random.choice(PARTICLE_CHARS)
             particles.append(Particle(self.x, self.y, vx, vy, self.color, char, lifespan))
 
