@@ -71,6 +71,7 @@ class Firework(Particle):
         super().__init__(x, y, random.uniform(-1.5, 1.5), -random.uniform(2.0, 3.0), color, '^', 1000)
         self.has_reached_apex = False
         self.descent_counter = 0
+        self.shape = random.choice(['circle', 'star', 'square'])
         self.has_reached_apex = False # New state variable
         self.descent_counter = 0     # New counter for descent
 
