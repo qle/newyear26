@@ -8,6 +8,8 @@ This Python script displays a countdown to January 1, 2026. As the countdown run
 
 The animation is created using the `curses` library.
 
+This application was created during a vibe coding session with Gemini CLI.
+
 ## Usage
 
 To run the script, simply execute the following command in your terminal:
