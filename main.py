@@ -111,12 +111,42 @@ class Firework(Particle):
 
     def explode(self, particles):
         num_particles = random.randint(100, 200)
+
+        # Pre-calculate shape-specific parameters
+        if self.shape == 'star':
+            num_points = random.randint(5, 8)
+            base_angle = random.uniform(0, 2 * math.pi)
+
         for _ in range(num_particles):
-            angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(0.5, 1.5) # Reduced speed for smaller explosion
-            vx = math.cos(angle) * speed * 2.0 # Correct for terminal aspect ratio
-            vy = math.sin(angle) * speed
-            lifespan = random.randint(30, 60) # Longer lifespan to hold shape
+            if self.shape == 'circle':
+                angle = random.uniform(0, 2 * math.pi)
+                speed = random.uniform(0.5, 1.5)
+                vx = math.cos(angle) * speed * 2.0 # Aspect ratio correction
+                vy = math.sin(angle) * speed
+            elif self.shape == 'star':
+                point = random.randint(0, num_points - 1)
+                angle = base_angle + (2 * math.pi / num_points) * point + random.uniform(-0.1, 0.1)
+                speed = random.uniform(1.0, 3.0) # Starbursts are faster
+                vx = math.cos(angle) * speed * 2.0 # Aspect ratio correction
+                vy = math.sin(angle) * speed
+            elif self.shape == 'square':
+                side = random.randint(0, 3)
+                speed = random.uniform(0.5, 1.5)
+                if side == 0:   # Top
+                    vx = random.uniform(-1, 1) * speed
+                    vy = -speed
+                elif side == 1: # Bottom
+                    vx = random.uniform(-1, 1) * speed
+                    vy = speed
+                elif side == 2: # Left
+                    vx = -speed
+                    vy = random.uniform(-1, 1) * speed
+                else:           # Right
+                    vx = speed
+                    vy = random.uniform(-1, 1) * speed
+                vx *= 2.0 # Aspect ratio correction
+
+            lifespan = random.randint(30, 60)
             char = random.choice(PARTICLE_CHARS)
             particles.append(Particle(self.x, self.y, vx, vy, self.color, char, lifespan))
 
