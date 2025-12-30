@@ -14,17 +14,17 @@ PARTICLE_CHARS = ['*', '.', '+', '·']
 # --- Digital Clock Font ---
 # 5x5 square matrix for each digit
 _DIGITS = {
-    '0': [" XX  ", "X  X ", "X  X ", "X  X ", " XX  "],
-    '1': ["  X  ", " XX  ", "  X  ", "  X  ", "  X  "],
-    '2': ["XX   ", "   X ", "  X  ", " X   ", "XX   "],
-    '3': ["XX   ", "   X ", "XX   ", "   X ", "XX   "],
-    '4': ["X  X ", "X  X ", "XX   ", "   X ", "   X "],
-    '5': ["XX   ", "X    ", "XX   ", "   X ", "XX   "],
-    '6': [" XX  ", "X    ", "XX   ", "X  X ", " XX  "],
-    '7': ["XX   ", "   X ", "   X ", "   X ", "   X "],
-    '8': [" XX  ", "X  X ", " XX  ", "X  X ", " XX  "],
-    '9': [" XX  ", "X  X ", " XX  ", "    X", " XX  "],
-    ':': ["     ", "  X  ", "     ", "  X  ", "     "],
+    '0': [" XXX ", "X   X", "X   X", "X   X", "X   X", "X   X", " XXX "],
+    '1': ["  X  ", " XX  ", "  X  ", "  X  ", "  X  ", "  X  ", " XXX "],
+    '2': [" XXX ", "X   X", "    X", "   X ", "  X  ", " X   ", "XXXXX"],
+    '3': [" XXX ", "X   X", "    X", " XXX ", "    X", "X   X", " XXX "],
+    '4': ["X   X", "X   X", "X   X", "XXXXX", "    X", "    X", "    X"],
+    '5': ["XXXXX", "X    ", "X    ", " XXX ", "    X", "X   X", " XXX "],
+    '6': [" XXX ", "X    ", "X    ", "XXXXX", "X   X", "X   X", " XXX "],
+    '7': ["XXXXX", "X   X", "    X", "   X ", "  X  ", "  X  ", "  X  "],
+    '8': [" XXX ", "X   X", "X   X", " XXX ", "X   X", "X   X", " XXX "],
+    '9': [" XXX ", "X   X", "X   X", "XXXXX", "    X", "    X", " XXX "],
+    ':': ["     ", "  X  ", "     ", "     ", "     ", "  X  ", "     "],
 }
 
 
@@ -62,7 +62,7 @@ class Firework(Particle):
         super().__init__(x, y, random.uniform(-1.5, 1.5), -random.uniform(2.0, 3.0), color, '^', 1000)
         self.has_reached_apex = False
         self.descent_counter = 0
-        self.shape = random.choice(['circle', 'star', 'square'])
+        self.shape = random.choice(['circle', 'star', 'square', 'heart'])
         self.has_reached_apex = False # New state variable
         self.descent_counter = 0     # New counter for descent
 
@@ -136,6 +136,46 @@ class Firework(Particle):
                     vx = speed
                     vy = random.uniform(-1, 1) * speed
                 vx *= 2.0 # Aspect ratio correction
+            elif self.shape == 'heart':
+                heart_points_template = [
+                    (0, -2), (1, -3), (2, -2), (3, -1), (4, 0),
+                    (3, 1), (2, 2), (1, 3), (0, 4), (-1, 3),
+                    (-2, 2), (-3, 1), (-4, 0), (-3, -1), (-2, -2), (-1, -3)
+                ]
+                # Scale the heart points for better visual
+                scale_heart = 0.5 # Smaller heart to fit well
+                heart_points = [(int(p[0]*scale_heart), int(p[1]*scale_heart)) for p in heart_points_template]
+
+                for _ in range(num_particles // 2): # Use half particles for the heart to make it distinct
+                    # Choose a point on the heart outline for initial position
+                    px, py = random.choice(heart_points)
+                    
+                    # Generate particles with velocity that spreads them out from the heart's outline
+                    # Small random deviation to create a 'fuzzy' heart
+                    dev_x = random.uniform(-0.8, 0.8)
+                    dev_y = random.uniform(-0.8, 0.8)
+                    
+                    # Initial particle position relative to explosion center
+                    start_x = self.x + px + dev_x
+                    start_y = self.y + py + dev_y
+
+                    # Velocity to push particles outwards from the heart's segment
+                    # Adjusting 'angle' and 'speed' based on the deviation from the chosen heart point
+                    # Define angle based on the current particle's relative position
+                    angle = math.atan2(py + dev_y, px + dev_x)
+                    angle_dev = random.uniform(-math.pi/8, math.pi/8)
+                    
+                    # Ensure some outward motion
+                    outward_speed = random.uniform(0.1, 0.6)
+                    
+                    # Calculate velocity components based on direction from heart center
+                    vx = (px + dev_x) * 0.1 + math.cos(angle + angle_dev) * outward_speed * 2.0
+                    vy = (py + dev_y) * 0.1 + math.sin(angle + angle_dev) * outward_speed
+
+                    lifespan = random.randint(40, 80) # Shorter lifespan to better define the shape
+                    char = random.choice(PARTICLE_CHARS)
+                    particles.append(Particle(start_x, start_y, vx, vy, self.color, char, lifespan))
+
 
             lifespan = random.randint(60, 120) # Longer lifespan for visible shapes
             char = random.choice(PARTICLE_CHARS)
@@ -160,12 +200,12 @@ def draw_time(stdscr, days, hours, mins, secs, x_offset, y_offset, color, sh, sw
 
     # --- Fixed Scaling ---
     digit_width = 5
-    spacing = 1 # Adjusted spacing for smaller digits
+    spacing = 1 # Adjusted spacing for 5x7 digits
     char_cell_width = digit_width + spacing
     total_width = len(time_str) * char_cell_width
 
     # Check if the terminal is too small to draw the numbers
-    if sw < total_width or sh < 5: # Base digit is 5 high
+    if sw < total_width or sh < 7: # Base digit is 7 high
         msg = "Terminal too small"
         try:
             stdscr.addstr(sh // 2, (sw - len(msg)) // 2, msg)
@@ -176,8 +216,8 @@ def draw_time(stdscr, days, hours, mins, secs, x_offset, y_offset, color, sh, sw
     # Calculate starting position to center the clock horizontally
     start_x = x_offset - total_width // 2
 
-    # Adjust y_offset to vertically center the 5-high digits
-    y_offset = (sh - 5) // 2
+    # Adjust y_offset to vertically center the 7-high digits
+    y_offset = (sh - 7) // 2
 
     for i, char in enumerate(time_str):
         draw_digit(stdscr, char, start_x + i * char_cell_width, y_offset, color)
@@ -262,7 +302,7 @@ def main(stdscr):
         stdscr.clear()
 
         # Draw time
-        draw_time(stdscr, days, hours, mins, secs, sw // 2, sh // 2 - 7, white_color, sh, sw)
+        draw_time(stdscr, days, hours, mins, secs, sw // 2, sh // 2 - 5, white_color, sh, sw)
         
         # Draw message
         msg = "Press escape twice to exit terminal"
