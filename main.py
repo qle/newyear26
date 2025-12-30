@@ -1,5 +1,6 @@
 
 import curses
+# -*- coding: utf-8 -*-
 import time
 import random
 import math
@@ -13,30 +14,20 @@ PARTICLE_CHARS = ['*', '.', '+', '·']
 # --- Digital Clock Font ---
 # 5x5 square matrix for each digit
 _DIGITS = {
-    '0': ["XXXXXXXXXX", "XX      XX", "XX      XX", "XX      XX", "XXXXXXXXXX"],
-    '1': ["    XX    ", "    XX    ", "    XX    ", "    XX    ", "    XX    "],
-    '2': ["XXXXXXXXXX", "        XX", "XXXXXXXXXX", "XX        ", "XXXXXXXXXX"],
-    '3': ["XXXXXXXXXX", "        XX", "XXXXXXXXXX", "        XX", "XXXXXXXXXX"],
-    '4': ["XX      XX", "XX      XX", "XXXXXXXXXX", "        XX", "        XX"],
-    '5': ["XXXXXXXXXX", "XX        ", "XXXXXXXXXX", "        XX", "XXXXXXXXXX"],
-    '6': ["XXXXXXXXXX", "XX        ", "XXXXXXXXXX", "XX      XX", "XXXXXXXXXX"],
-    '7': ["XXXXXXXXXX", "        XX", "        XX", "        XX", "        XX"],
-    '8': ["XXXXXXXXXX", "XX      XX", "XXXXXXXXXX", "XX      XX", "XXXXXXXXXX"],
-    '9': ["XXXXXXXXXX", "XX      XX", "XXXXXXXXXX", "        XX", "XXXXXXXXXX"],
-    ':': ["          ", "    XX    ", "          ", "    XX    ", "          "],
+    '0': [" XX  ", "X  X ", "X  X ", "X  X ", " XX  "],
+    '1': ["  X  ", " XX  ", "  X  ", "  X  ", "  X  "],
+    '2': ["XX   ", "   X ", "  X  ", " X   ", "XX   "],
+    '3': ["XX   ", "   X ", "XX   ", "   X ", "XX   "],
+    '4': ["X  X ", "X  X ", "XX   ", "   X ", "   X "],
+    '5': ["XX   ", "X    ", "XX   ", "   X ", "XX   "],
+    '6': [" XX  ", "X    ", "XX   ", "X  X ", " XX  "],
+    '7': ["XX   ", "   X ", "   X ", "   X ", "   X "],
+    '8': [" XX  ", "X  X ", " XX  ", "X  X ", " XX  "],
+    '9': [" XX  ", "X  X ", " XX  ", "    X", " XX  "],
+    ':': ["     ", "  X  ", "     ", "  X  ", "     "],
 }
 
-def create_tall_digits(scale_factor):
-    """Scales the digits vertically."""
-    scaled_digits = {}
-    for digit, matrix in _DIGITS.items():
-        scaled_matrix = []
-        for row in matrix:
-            scaled_matrix.extend([row] * scale_factor)
-        scaled_digits[digit] = scaled_matrix
-    return scaled_digits
 
-DIGITS = create_tall_digits(2)
 
 # --- Classes ---
 class Particle:
@@ -154,7 +145,7 @@ class Firework(Particle):
 # --- Drawing Functions ---
 def draw_digit(stdscr, num_char, x_offset, y_offset, color):
     """Draws a single 5x5 digit."""
-    digit_matrix = DIGITS.get(num_char, [])
+    digit_matrix = _DIGITS.get(num_char, [])
     for r, row_str in enumerate(digit_matrix):
         for c, char in enumerate(row_str):
             if char != ' ':
@@ -163,17 +154,33 @@ def draw_digit(stdscr, num_char, x_offset, y_offset, color):
                 except curses.error:
                     pass
 
-def draw_time(stdscr, days, hours, mins, secs, x_offset, y_offset, color):
-    """Draws the full time string."""
+def draw_time(stdscr, days, hours, mins, secs, x_offset, y_offset, color, sh, sw):
+    """Draws the full time string, scaled to the window size."""
     time_str = f"{days:02d}:{hours:02d}:{mins:02d}:{secs:02d}"
-    char_width = 12  # 10 for digit, 2 for space
+
+    # --- Fixed Scaling ---
+    digit_width = 5
+    spacing = 1 # Adjusted spacing for smaller digits
+    char_cell_width = digit_width + spacing
+    total_width = len(time_str) * char_cell_width
+
+    # Check if the terminal is too small to draw the numbers
+    if sw < total_width or sh < 5: # Base digit is 5 high
+        msg = "Terminal too small"
+        try:
+            stdscr.addstr(sh // 2, (sw - len(msg)) // 2, msg)
+        except curses.error:
+            pass
+        return
     
-    # Calculate starting position to center the clock
-    total_width = len(time_str) * char_width
+    # Calculate starting position to center the clock horizontally
     start_x = x_offset - total_width // 2
 
+    # Adjust y_offset to vertically center the 5-high digits
+    y_offset = (sh - 5) // 2
+
     for i, char in enumerate(time_str):
-        draw_digit(stdscr, char, start_x + i * char_width, y_offset, color)
+        draw_digit(stdscr, char, start_x + i * char_cell_width, y_offset, color)
 
 
 # --- Main Application ---
@@ -255,7 +262,7 @@ def main(stdscr):
         stdscr.clear()
 
         # Draw time
-        draw_time(stdscr, days, hours, mins, secs, sw // 2, sh // 2 - 7, white_color)
+        draw_time(stdscr, days, hours, mins, secs, sw // 2, sh // 2 - 7, white_color, sh, sw)
         
         # Draw message
         msg = "Press escape twice to exit terminal"
