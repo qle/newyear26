@@ -284,18 +284,18 @@ def main(stdscr):
             new_particles_from_fw = fw.update(sh)
             particles.extend(new_particles_from_fw)
             if fw.lifespan <= 0:
-                spawned_particles = fw.explode()
-                particles.extend(spawned_particles)
-                
-                if spawned_particles: # Add explosion text if particles were spawned
-                    explosion_texts_to_display.append({
-                        'text': fw.shape,
-                        'x': int(fw.x),
-                        'y': int(fw.y),
-                        'particles': spawned_particles, # Store particle references
-                        'display_countdown': 10 # Display for approximately 1 second
-                    })
-                fireworks.remove(fw)
+                                spawned_particles = fw.explode()
+                                particles.extend(spawned_particles)
+                                
+                                if spawned_particles: # Add explosion text if particles were spawned
+                                    explosion_texts_to_display.append({
+                                        'text': fw.shape,
+                                        'x': int(fw.x),
+                                        'y': int(fw.y),
+                                        'particles': spawned_particles, # Store particle references
+                                        'display_countdown': 10 # Display for approximately 1 second
+                                    })
+                                fireworks.remove(fw)
 
         # Update particles (existing logic)
         for p in particles[:]:
