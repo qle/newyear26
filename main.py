@@ -100,7 +100,9 @@ class Firework(Particle):
 
         return newly_created_trail_particles
 
-    def explode(self, particles):
+    def explode(self):
+        new_particles = []
+        max_lifespan = 0
         num_particles = random.randint(100, 200)
 
         # Pre-calculate shape-specific parameters
@@ -108,18 +110,31 @@ class Firework(Particle):
             num_points = random.randint(5, 8)
             base_angle = random.uniform(0, 2 * math.pi)
 
+        if self.shape == 'heart':
+            heart_points_template = [
+                (0, -2), (1, -3), (2, -2), (3, -1), (4, 0),
+                (3, 1), (2, 2), (1, 3), (0, 4), (-1, 3),
+                (-2, 2), (-3, 1), (-4, 0), (-3, -1), (-2, -2), (-1, -3)
+            ]
+            scale_heart = 0.5
+            heart_points = [(int(p[0]*scale_heart), int(p[1]*scale_heart)) for p in heart_points_template]
+            num_particles = random.randint(150, 250) # More particles for heart to be visible
+
+
         for _ in range(num_particles):
             if self.shape == 'circle':
                 angle = random.uniform(0, 2 * math.pi)
                 speed = random.uniform(0.5, 1.5)
                 vx = math.cos(angle) * speed * 2.0 # Aspect ratio correction
                 vy = math.sin(angle) * speed
+                lifespan = random.randint(60, 120)
             elif self.shape == 'star':
                 point = random.randint(0, num_points - 1)
                 angle = base_angle + (2 * math.pi / num_points) * point + random.uniform(-0.1, 0.1)
                 speed = random.uniform(1.0, 3.0) # Starbursts are faster
                 vx = math.cos(angle) * speed * 2.0 # Aspect ratio correction
                 vy = math.sin(angle) * speed
+                lifespan = random.randint(60, 120)
             elif self.shape == 'square':
                 side = random.randint(0, 3)
                 speed = random.uniform(0.5, 1.5)
@@ -136,50 +151,30 @@ class Firework(Particle):
                     vx = speed
                     vy = random.uniform(-1, 1) * speed
                 vx *= 2.0 # Aspect ratio correction
+                lifespan = random.randint(60, 120)
             elif self.shape == 'heart':
-                heart_points_template = [
-                    (0, -2), (1, -3), (2, -2), (3, -1), (4, 0),
-                    (3, 1), (2, 2), (1, 3), (0, 4), (-1, 3),
-                    (-2, 2), (-3, 1), (-4, 0), (-3, -1), (-2, -2), (-1, -3)
-                ]
-                # Scale the heart points for better visual
-                scale_heart = 0.5 # Smaller heart to fit well
-                heart_points = [(int(p[0]*scale_heart), int(p[1]*scale_heart)) for p in heart_points_template]
+                px, py = random.choice(heart_points)
+                
+                dev_x = random.uniform(-0.8, 0.8)
+                dev_y = random.uniform(-0.8, 0.8)
+                
+                # Use current firework position as base
+                start_x = self.x + px + dev_x
+                start_y = self.y + py + dev_y
 
-                for _ in range(num_particles // 2): # Use half particles for the heart to make it distinct
-                    # Choose a point on the heart outline for initial position
-                    px, py = random.choice(heart_points)
-                    
-                    # Generate particles with velocity that spreads them out from the heart's outline
-                    # Small random deviation to create a 'fuzzy' heart
-                    dev_x = random.uniform(-0.8, 0.8)
-                    dev_y = random.uniform(-0.8, 0.8)
-                    
-                    # Initial particle position relative to explosion center
-                    start_x = self.x + px + dev_x
-                    start_y = self.y + py + dev_y
-
-                    # Velocity to push particles outwards from the heart's segment
-                    # Adjusting 'angle' and 'speed' based on the deviation from the chosen heart point
-                    # Define angle based on the current particle's relative position
-                    angle = math.atan2(py + dev_y, px + dev_x)
-                    angle_dev = random.uniform(-math.pi/8, math.pi/8)
-                    
-                    # Ensure some outward motion
-                    outward_speed = random.uniform(0.1, 0.6)
-                    
-                    # Calculate velocity components based on direction from heart center
-                    vx = (px + dev_x) * 0.1 + math.cos(angle + angle_dev) * outward_speed * 2.0
-                    vy = (py + dev_y) * 0.1 + math.sin(angle + angle_dev) * outward_speed
-
-                    lifespan = random.randint(40, 80) # Shorter lifespan to better define the shape
-                    char = random.choice(PARTICLE_CHARS)
-                    particles.append(Particle(start_x, start_y, vx, vy, self.color, char, lifespan))
-
-
-            lifespan = random.randint(60, 120) # Longer lifespan for visible shapes
+                angle = math.atan2(py + dev_y, px + dev_x)
+                angle_dev = random.uniform(-math.pi/8, math.pi/8)
+                outward_speed = random.uniform(0.1, 0.6)
+                
+                vx = (px + dev_x) * 0.1 + math.cos(angle + angle_dev) * outward_speed * 2.0
+                vy = (py + dev_y) * 0.1 + math.sin(angle + angle_dev) * outward_speed
+                lifespan = random.randint(40, 80)
+            
             char = random.choice(PARTICLE_CHARS)
-            particles.append(Particle(self.x, self.y, vx, vy, self.color, char, lifespan))
+            new_particles.append(Particle(self.x, self.y, vx, vy, self.color, char, lifespan))
+
+        
+        return new_particles
 
 
 # --- Drawing Functions ---
@@ -247,6 +242,7 @@ def main(stdscr):
 
     fireworks = []
     particles = []
+    explosion_texts_to_display = []
     
     last_esc_press = 0
 
@@ -285,18 +281,36 @@ def main(stdscr):
 
         # Update fireworks
         for fw in fireworks[:]:
-            new_particles = fw.update(sh)
-            particles.extend(new_particles)
+            new_particles_from_fw = fw.update(sh)
+            particles.extend(new_particles_from_fw)
             if fw.lifespan <= 0:
-                fw.explode(particles)
+                spawned_particles = fw.explode()
+                particles.extend(spawned_particles)
+                
+                if spawned_particles: # Add explosion text if particles were spawned
+                    explosion_texts_to_display.append({
+                        'text': fw.shape,
+                        'x': int(fw.x),
+                        'y': int(fw.y),
+                        'particles': spawned_particles, # Store particle references
+                        'display_countdown': 10 # Display for approximately 1 second
+                    })
                 fireworks.remove(fw)
 
-        # Update particles
+        # Update particles (existing logic)
         for p in particles[:]:
-            new_particles = p.update(sh)
-            particles.extend(new_particles)
+            p.update(sh)
             if p.lifespan <= 0:
                 particles.remove(p)
+        
+        # Update explosion texts: filter out texts with no remaining active particles or expired countdown
+        for text_obj in explosion_texts_to_display[:]:
+            text_obj['particles'] = [p for p in text_obj['particles'] if p.lifespan > 0]
+            text_obj['display_countdown'] -= 1
+            
+            if not text_obj['particles'] or text_obj['display_countdown'] <= 0:
+                explosion_texts_to_display.remove(text_obj)
+
 
         # --- Draw Frame ---
         stdscr.clear()
@@ -314,6 +328,16 @@ def main(stdscr):
             fw.draw(stdscr)
         for p in particles:
             p.draw(stdscr)
+        
+        # Draw explosion texts
+        for text_obj in explosion_texts_to_display:
+            # The text is drawn if the object still exists in the list
+            try:
+                # Center the text around the explosion point
+                text_x = text_obj['x'] - len(text_obj['text']) // 2
+                stdscr.addstr(int(text_obj['y']), int(text_x), text_obj['text'], curses.A_BOLD | random.choice(colors))
+            except curses.error:
+                pass
 
         stdscr.refresh()
         
