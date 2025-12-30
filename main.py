@@ -7,9 +7,31 @@ import math
 import datetime
 
 # --- Constants ---
-TARGET_DATE = datetime.datetime(2026, 1, 1, 0, 0, 0)
+# TARGET_DATE = datetime.datetime(2026, 1, 1, 0, 0, 0) # Commented out, now dynamic
 GRAVITY = 0.05
 PARTICLE_CHARS = ['*', '.', '+', '·']
+
+# --- Known Holidays ---
+KNOWN_HOLIDAYS = {
+    'New Year': (1, 1),
+    'Christmas': (12, 25),
+    'Independence Day': (7, 4), # US Independence Day
+    'Martin Luther King Jr. Day': (1, 20),
+    'Presidents Day': (2, 16),
+    'Memorial Day': (5, 24),
+    'Juneteenth': (6, 19),
+    'Labor Day': (9, 7),
+    'Columbus Day': (10, 12),
+    'Veterans Day': (11, 11),
+    'Thanksgiving Day': (11, 26),
+    'Lunar New Year': (2, 17),
+    'Chinese New Year': (2, 17),
+    'Easter': (4, 5),
+    'Diwali': (11, 8),
+    'Hanukkah': (12, 4),
+    'Rossh Hashanah': (9, 11)
+    # Add more holidays here as needed
+}
 
 # --- Digital Clock Font ---
 # 5x5 square matrix for each digit
@@ -26,6 +48,50 @@ _DIGITS = {
     '9': [" XXX ", "X   X", "X   X", "XXXXX", "    X", "    X", " XXX "],
     ':': ["     ", "  X  ", "     ", "     ", "     ", "  X  ", "     "],
 }
+
+def get_target_date_from_user():
+    """Prompts the user for a target date and parses it."""
+    while True:
+        try:
+            user_input = input("Enter a target date (YYYY-MM-DD), a holiday name (e.g., 'New Year'), or 'default' for Jan 1, 2026: ").strip().lower()
+
+            if user_input == 'default':
+                print("Using default target date: January 1, 2026")
+                return datetime.datetime(2026, 1, 1, 0, 0, 0)
+
+            # Try to parse as a direct date
+            try:
+                # Attempt to parse common date formats
+                if '-' in user_input:
+                    target_date = datetime.datetime.strptime(user_input, "%Y-%m-%d")
+                elif '/' in user_input:
+                    target_date = datetime.datetime.strptime(user_input, "%m/%d/%Y")
+                else:
+                    raise ValueError # Force holiday check if no common separator
+
+                # Ensure time is set to midnight for countdown
+                return target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            except ValueError:
+                # Try to parse as a known holiday
+
+                for key, value in KNOWN_HOLIDAYS.items():
+                    if user_input.lower() == key.lower():
+                        month, day = value 
+                        current_year = datetime.datetime.now().year
+                        target_date = datetime.datetime(current_year, month, day, 0, 0, 0)
+
+                        # If the holiday has already passed this year, set it for next year
+                        if target_date < datetime.datetime.now():
+                            target_date = target_date.replace(year=current_year + 1)
+                        print(f"Recognized holiday: {user_input.title()}. Target date set to {target_date.strftime('%Y-%m-%d')}")
+                        return target_date
+                print(f"Enter a date or a known holiday: {', '.join(str(key) for key in KNOWN_HOLIDAYS.keys())}") 
+
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}. Please try again.")
+
+
 
 
 
@@ -219,7 +285,7 @@ def draw_time(stdscr, days, hours, mins, secs, x_offset, y_offset, color, sh, sw
 
 
 # --- Main Application ---
-def main(stdscr):
+def main(stdscr, target_date):
     """Main application loop."""
     curses.curs_set(0)
     stdscr.nodelay(1)
@@ -263,7 +329,7 @@ def main(stdscr):
 
         # Update countdown
         now = datetime.datetime.now()
-        delta = TARGET_DATE - now
+        delta = target_date - now
         
         if delta.total_seconds() <= 0:
             # Happy New Year!
@@ -284,18 +350,18 @@ def main(stdscr):
             new_particles_from_fw = fw.update(sh)
             particles.extend(new_particles_from_fw)
             if fw.lifespan <= 0:
-                                spawned_particles = fw.explode()
-                                particles.extend(spawned_particles)
-                                
-                                if spawned_particles: # Add explosion text if particles were spawned
-                                    explosion_texts_to_display.append({
-                                        'text': fw.shape,
-                                        'x': int(fw.x),
-                                        'y': int(fw.y),
-                                        'particles': spawned_particles, # Store particle references
-                                        'display_countdown': 10 # Display for approximately 1 second
-                                    })
-                                fireworks.remove(fw)
+                spawned_particles = fw.explode()
+                particles.extend(spawned_particles)
+                
+                if spawned_particles: # Add explosion text if particles were spawned
+                    explosion_texts_to_display.append({
+                        'text': fw.shape,
+                        'x': int(fw.x),
+                        'y': int(fw.y),
+                        'particles': spawned_particles, # Store particle references
+                        'display_countdown': 10 # Display for approximately 1 second
+                    })
+                fireworks.remove(fw)
 
         # Update particles (existing logic)
         for p in particles[:]:
@@ -360,8 +426,9 @@ def main(stdscr):
 
 
 if __name__ == '__main__':
+    target_date = get_target_date_from_user()
     try:
-        curses.wrapper(main)
+        curses.wrapper(main, target_date)
     except curses.error as e:
         print(f"Error running curses application: {e}")
         print("Your terminal may not support this animation.")
